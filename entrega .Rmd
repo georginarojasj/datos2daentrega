@@ -1,0 +1,178 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r}
+library(htmltab)
+library(stringr) #para limpieza de columnas (extracción de numeros, particiones)
+library(readr) 
+library(sp)
+#install.packages("geojsonio")
+library(geojsonio)
+
+#install.packages("rgdal")
+library(rgdal)
+library(rio)
+
+```
+
+
+1. DATA HDI 
+```{r}
+
+library(htmltab) 
+
+linkWiki_hdi = "https://en.wikipedia.org/wiki/List_of_countries_by_Human_Development_Index"
+linkPath_hdi= '//*[@id="mw-content-text"]/div[1]/table[1]'
+
+hdi = htmltab(doc = linkWiki_hdi, 
+                which =linkPath_hdi)
+
+```
+
+
+```{r}
+names(hdi)
+
+hdi[c(1,4)] <- list (NULL)
+
+names(hdi) = c("Country", "HDI")
+
+str(hdi$HDI) 
+
+hdi$HDI =as.numeric(hdi$HDI)
+
+#vemos si hay valores perdidos 
+hdi[!complete.cases(hdi),]
+```
+
+
+2. DATA POBREZA PORCENTAJE
+
+```{r}
+
+
+linkWiki_pob= "https://en.wikipedia.org/wiki/List_of_countries_by_percentage_of_population_living_in_poverty"
+linkPath_pob='
+//*[@id="mw-content-text"]/div[1]/table[3] '
+
+pob = htmltab(doc = linkWiki_pob, 
+                which =linkPath_pob)
+```
+
+```{r}
+names(pob)
+
+pob [c (3, 4, 5, 6, 7, 8)] <- list (NULL) 
+
+names(pob) = c("Country", "POB")
+
+table(pob$POB)
+str(pob$POB)
+```
+
+
+
+```{r}
+pob$POB=parse_number(pob$POB)
+
+str(pob$POB)
+
+```
+
+
+3. DATA GINI
+
+```{r}
+linkgini= "https://github.com/georginarojasj/datos2daentrega/raw/master/GINI%20INDEX.xlsx"
+
+gini= import(linkgini)
+```
+
+```{r}
+names(gini)
+gini [c (1, 2, 4, 5, 6, 7, 8, 9, 10)] <- list (NULL) 
+
+#tambien elimino 2019/2020 porque no hay muchos datos
+gini [c (6,7)] <- list (NULL) 
+
+
+#me quedo con el año 2015 porque tiene mas datos 
+gini [c (3,4, 5)] <- list (NULL) 
+
+```
+
+
+
+```{r}
+
+names(gini) = c("Country", "Gini")
+
+str(gini$Gini)
+gini$Gini=as.numeric(gini$Gini)
+
+```
+
+```{r}
+gini[!complete.cases(gini),]
+```
+
+4. Desempleo
+
+
+```{r}
+linkdesem= "https://github.com/georginarojasj/datos2daentrega/raw/master/desempleo.xlsx"
+desem= import(linkdesem)
+```
+
+```{r}
+
+names(desem)
+desem [c (1, 2, 4, 5, 6, 7, 8, 9, 10)] <- list (NULL) 
+
+#tambien elimino 2019/2020 porque no hay muchos datos
+desem [c (6,7)] <- list (NULL) 
+
+
+#me quedo con el año 2015 porque tiene mas datos 
+desem [c (3,4, 5)] <- list (NULL) 
+
+```
+ 
+```{r}
+names(desem) = c("Country", "Desem")
+
+str(desem$Desem)
+desem$Desem=as.numeric(desem$Desem)
+```
+ 
+
+ Merge 
+```{r}
+vidacond = merge(desem,gini,by.x='Country', by.y='Country')
+
+
+vidacond2 = merge(hdi,pob,by.x='Country', by.y='Country')
+
+
+CondVida=merge(vidacond,vidacond2,by.x='Country', by.y='Country')
+```
+
+Verificar si hay casos en una base de datos que no hay en la otra
+```{r}
+CondVida[!complete.cases(CondVida),] 
+```
+
+Eliminamos los NA
+```{r}
+CondVida=CondVida[complete.cases(CondVida),]
+row.names(CondVida)=NULL
+```
+
+
+
+```{r}
+write.csv(CondVida,"CondicionesVida.csv", row.names = F) 
+```
+
